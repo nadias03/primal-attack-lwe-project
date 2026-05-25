@@ -1,5 +1,5 @@
 import numpy as np
-from fpylll import IntegerMatrix, LLL
+from fpylll import IntegerMatrix, LLL, BKZ
 
 def generate_lwe(n, m, q, S, E):
     """
@@ -93,6 +93,29 @@ def reduce_lattice_lll(B):
 
     return reduced
 
+def reduce_lattice_bkz(B, block_size=10):
+    """
+    Applies BKZ lattice basis reduction.
+
+    Same as in LLL reduction - fpylll stores basis vectors as rows. 
+    Therefore, after reduction, each row of the returned matrix is one reduced basis vector.
+
+    Parameters:
+        B (np.ndarray): basis of the embedding lattice 
+    
+    Returns:
+        reduced (np.ndarray): BKZ reduced lattice basis
+    """
+
+    B_int = IntegerMatrix.from_matrix(B.astype(int).tolist())
+    
+    param = BKZ.Param(block_size)
+    BKZ.reduction(B_int, param)
+
+    reduced = np.array([[B_int[i, j] for j in range(B_int.ncols)] for i in range(B_int.nrows)])
+
+    return reduced
+
 def try_recover_secret(reduced_basis, n, m, q):
     """
     Searches the reduced basis for vectors of the form: (e, s, +/- 1)
@@ -149,26 +172,30 @@ def verify_candidate(A, b, q, s_candidate, e_candidate):
     return np.array_equal(lhs, rhs)
 
 def run_primal_attack(
+    reduction_mathod,
     n=4,
     m=8,
     q=97,
     S=[-1, 0, 1],
     E=[-1, 0, 1],
+    bkz_block_size=10,
 ):
     """
     Demonstrates the primal attack by running following:
     1. Generates an LWE instance
     2. Builds embedding lattice basis
-    3. Applies LLL lattice basis reduction
+    3. Applies LLL or BKZ  lattice basis reduction
     4. Searches the reduced basis for vectors of the form (e, s, +/- 1)
     5. Verifies if the recovered candidates satifsy the original LWe equation
 
     Parameters:
+        reduction (str): basis reduction method - lll or bkz
         n (int): dimension of the secret vector s
         m (int): number of LWE samples, i.e. number of equations
         q (int): modulo
         S (list[int]): set of possible values used to generate the secret vector s 
         E (list[int]): set of possible values used to generate the error vector e
+        bkz_block_size (int): block size parameter for BKZ basis reduction
 
     Returns:
         dict:
@@ -202,9 +229,14 @@ def run_primal_attack(
     print("Baza kraty embeddingowej")
     print(B)
 
-    reduced = reduce_lattice_lll(B)
+    if reduction_mathod == "LLL":
+        reduced = reduce_lattice_lll(B=B)
+    elif reduction_mathod == "BKZ":
+        reduced = reduce_lattice_bkz(B=B, block_size=bkz_block_size)
+    else:
+        raise ValueError("Parametr reduction_method musi mieć wartość 'LLL' lub 'BKZ'")
 
-    print("Baza po redukcji za pomocą algorytmu LLL")
+    print(f"Baza po redukcji za pomocą algorytmu {reduction_mathod}")
     print(reduced)
 
     print(type(reduced))
