@@ -172,7 +172,7 @@ def verify_candidate(A, b, q, s_candidate, e_candidate):
     return np.array_equal(lhs, rhs)
 
 def run_primal_attack(
-    reduction_mathod,
+    reduction_method,
     n=4,
     m=8,
     q=97,
@@ -229,18 +229,14 @@ def run_primal_attack(
     print("Baza kraty embeddingowej")
     print(B)
 
-    if reduction_mathod == "LLL":
+    if reduction_method == "LLL":
         reduced = reduce_lattice_lll(B=B)
-    elif reduction_mathod == "BKZ":
+    elif reduction_method == "BKZ":
         reduced = reduce_lattice_bkz(B=B, block_size=bkz_block_size)
     else:
         raise ValueError("Parametr reduction_method musi mieć wartość 'LLL' lub 'BKZ'")
 
-    print(f"Baza po redukcji za pomocą algorytmu {reduction_mathod}")
-    print(reduced)
-
-    print(type(reduced))
-    print(reduced.shape)
+    print(f"Baza po redukcji za pomocą algorytmu {reduction_method}")
     print(reduced)
 
     candidates = try_recover_secret(reduced_basis=reduced, n=n, m=m, q=q)
